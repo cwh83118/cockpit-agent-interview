@@ -280,6 +280,142 @@ your-submission/
 
 ---
 
+## 測試案例使用方式
+
+### 環境設置
+
+```bash
+# 1. Fork 這個 repo 並 clone 到本地
+git clone https://github.com/YOUR_USERNAME/cockpit-agent-interview.git
+cd cockpit-agent-interview
+
+# 2. 建立虛擬環境
+python -m venv venv
+source venv/bin/activate  # macOS/Linux
+# 或 venv\Scripts\activate  # Windows
+
+# 3. 安裝依賴
+pip install -r requirements.txt
+```
+
+### 執行測試
+
+```bash
+# 執行所有測試
+make test
+
+# 或使用 pytest 直接執行
+pytest -v
+
+# 分類執行
+make test-basic        # 基礎功能測試 (30%)
+make test-integration  # 整合測試 (40%)
+make test-scenarios    # 情境模擬測試 (30%)
+```
+
+### 測試結構說明
+
+```
+tests/
+├── test_basic.py         # 基礎測試
+│   ├── TestModels        # 資料模型測試（已提供，應該先通過）
+│   ├── TestSystem1Basic  # System 1 基本功能
+│   ├── TestSystem2Basic  # System 2 基本功能
+│   └── TestCommunication # 通訊機制測試
+│
+├── test_integration.py   # 整合測試
+│   ├── TestTaskDispatch  # 任務分派流程
+│   ├── TestConcurrency   # 並發處理（重要！）
+│   └── TestTaskLifecycle # 任務生命週期
+│
+└── test_scenarios.py     # 情境測試
+    ├── TestCockpitScenarios # 模擬真實座艙對話
+    └── TestEdgeCases        # 邊界情況處理
+```
+
+### 你需要實作的檔案
+
+測試會嘗試 import 以下模組，請確保建立這些檔案：
+
+```python
+# src/system1.py
+from .models import Task, TaskStatus
+
+class System1:
+    def __init__(self, channel=None): ...
+    def process_input(self, user_input: str) -> str: ...
+    def dispatch_task(self, task: Task) -> str: ...
+    def get_task_status(self, task_id: str) -> Optional[TaskStatus]: ...
+    def get_task_progress(self, task_id: str) -> Optional[dict]: ...
+
+# src/system2.py
+class System2:
+    def __init__(self, channel=None): ...
+    def receive_task(self, task: Task) -> bool: ...
+    def start_processing(self) -> None: ...
+    def execute_task(self, task_id: str) -> None: ...
+    def get_status(self, task_id: str) -> Optional[TaskStatus]: ...
+    def get_task(self, task_id: str) -> Optional[Task]: ...
+    def get_all_tasks(self) -> List[Task]: ...
+
+# src/communication.py
+class CommunicationChannel:
+    def send_task(self, task: Task) -> bool: ...
+    def receive_task(self, timeout: float = None) -> Optional[Task]: ...
+    def send_status_update(self, task_id: str, status: TaskStatus, progress: float) -> bool: ...
+    def query_status(self, task_id: str) -> Optional[dict]: ...
+```
+
+### 測試開發流程建議
+
+```bash
+# Step 1: 先確認 models 測試通過（這些不需要你實作）
+pytest tests/test_basic.py::TestModels -v
+
+# Step 2: 實作 communication.py，通過通訊測試
+pytest tests/test_basic.py::TestCommunication -v
+
+# Step 3: 實作 system1.py 基本功能
+pytest tests/test_basic.py::TestSystem1Basic -v
+
+# Step 4: 實作 system2.py 基本功能
+pytest tests/test_basic.py::TestSystem2Basic -v
+
+# Step 5: 通過整合測試（這是核心！）
+pytest tests/test_integration.py -v
+
+# Step 6: 通過情境測試
+pytest tests/test_scenarios.py -v
+
+# 最後：執行全部測試確認
+pytest -v
+```
+
+### 常見問題
+
+**Q: 測試顯示 "尚未實作 System1/System2"**
+```
+SKIPPED [1] test_basic.py: 尚未實作 System1/System2
+```
+A: 這是正常的！請先建立 `src/system1.py`, `src/system2.py`, `src/communication.py`。
+
+**Q: ImportError: No module named 'models'**
+
+A: 確保在專案根目錄執行測試，或設定 PYTHONPATH：
+```bash
+export PYTHONPATH=$PYTHONPATH:./src
+pytest -v
+```
+
+**Q: 並發測試一直失敗**
+
+A: 檢查以下幾點：
+- `receive_task()` 是否有 timeout 機制？
+- 是否使用 `threading.Lock` 保護共享狀態？
+- `start_processing()` 是否會阻塞？應該要能在背景執行
+
+---
+
 ## FAQ
 
 **Q: 可以使用 AI 輔助嗎？**
@@ -293,3 +429,33 @@ A: 不限制，只要能清楚呈現兩個系統的狀態即可。
 
 **Q: 如果時間不夠，應該優先完成什麼？**
 A: 優先順序：核心架構 > 通訊機制 > 測試通過 > 視覺化 > 加分項目
+
+---
+
+## 快速開始 (TL;DR)
+
+```bash
+# 1. Fork & Clone
+git clone https://github.com/YOUR_USERNAME/cockpit-agent-interview.git
+cd cockpit-agent-interview
+
+# 2. 設置環境
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+
+# 3. 看看現有的測試（會顯示 SKIPPED，這是正常的）
+pytest -v
+
+# 4. 開始實作！建立這三個檔案：
+#    - src/system1.py
+#    - src/system2.py
+#    - src/communication.py
+
+# 5. 邊寫邊測
+pytest tests/test_basic.py -v
+
+# 6. 完成後執行全部測試
+make test
+```
+
+祝你順利！
